@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "Journey",
+    "slug": "journey",
+    "version": "1.0.0",
+    "scheme": "journey",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "ios": {
+      "icon": "./assets/icon.png",
+      "bundleIdentifier": "com.journey.looksmax",
+      "appleTeamId": "YZP4MFJ47H",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses your camera to capture selfies for facial feature analysis and progress tracking.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to let you select photos for facial analysis.",
+        "NSPhotoLibraryAddUsageDescription": "This app saves assessment photos to your library so you can track your progress over time.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "buildNumber": "1",
+      "privacyPolicyUrl": "https://nova8.dev/privacy/330",
+      "usesAppleSignIn": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "minSdkVersion": 24,
+            "enableMinifyInReleaseBuilds": true
+          },
+          "ios": {
+            "deploymentTarget": "16.0"
+          }
+        }
+      ],
+      "expo-apple-authentication"
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/[REPLACE_AFTER_FIRST_BUILD]",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
+    },
+    "extra": {
+      "privacyPolicyUrl": "https://nova8.dev/privacy/330",
+      "apiBaseUrl": "https://3000-iug8hvx6c1p45x3l8h435.e2b.app"
+    }
+  }
+}
