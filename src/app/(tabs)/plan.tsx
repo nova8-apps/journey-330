@@ -40,7 +40,7 @@ export default function PlanScreen() {
         description: tipText.includes('—') ? tipText.split('—')[1].trim() : tipText,
         difficulty: (idx === 0 ? 'easy' : idx === 1 ? 'medium' : 'hard') as 'easy' | 'medium' | 'hard',
         timeframe: idx === 0 ? '1-2 weeks' : idx === 1 ? '3-6 weeks' : '2-3 months',
-        category: feature.category === 'skin' ? 'skincare' : feature.category === 'structure' ? 'exercise' : 'lifestyle',
+        category: feature.category === 'miscellaneous' ? 'skincare' : feature.category === 'dimorphism' ? 'exercise' : 'lifestyle',
       }))
     );
   }, [currentAssessment, weakestFeatures]);

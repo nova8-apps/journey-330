@@ -8,7 +8,8 @@ export interface FeatureGrade {
   description: string;
   icon: string;
   tips: string[];
-  category: 'structure' | 'skin' | 'features' | 'overall';
+  category: 'harmony' | 'dimorphism' | 'angularity' | 'miscellaneous';
+  idealRange?: string;
 }
 
 export interface Assessment {
@@ -16,6 +17,7 @@ export interface Assessment {
   date: string;
   overallGrade: Grade;
   overallScore: number;
+  pslTier: string;
   features: FeatureGrade[];
   photoUrl?: string;
 }

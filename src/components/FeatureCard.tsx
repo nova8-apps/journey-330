@@ -76,6 +76,11 @@ export function FeatureCard({ feature, onPress, compact = false }: FeatureCardPr
         <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 }} numberOfLines={1}>
           {feature.description}
         </Text>
+        {feature.idealRange ? (
+          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>
+            Ideal: {feature.idealRange}
+          </Text>
+        ) : null}
       </View>
       <View style={{ alignItems: 'center', marginRight: 8 }}>
         <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 22, color, letterSpacing: -0.5 }}>{feature.grade}</Text>

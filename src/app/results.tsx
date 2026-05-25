@@ -68,9 +68,14 @@ export default function ResultsScreen() {
         {/* Overall grade hero */}
         <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 28 }}>
           <GradeRing grade={currentAssessment.overallGrade} score={currentAssessment.overallScore} size={140} strokeWidth={8} showScore />
-          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.5)', marginTop: 12 }}>Overall Rating</Text>
+          <View style={{ marginTop: 12, paddingHorizontal: 20, paddingVertical: 6, borderRadius: 20, backgroundColor: colors.primary }}>
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: '#fff', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+              {currentAssessment.pslTier}
+            </Text>
+          </View>
+          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Overall Rating</Text>
           <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>
-            Based on 8 facial features analyzed
+            Based on 12 PSL facial features analyzed
           </Text>
         </View>
 
