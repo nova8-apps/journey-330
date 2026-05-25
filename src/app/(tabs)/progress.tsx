@@ -2,11 +2,11 @@ import React, { useMemo } from 'react';
 import { View, Text, ScrollView, useWindowDimensions, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Calendar, TrendingUp, Award, ArrowUpRight, ArrowDownRight } from 'lucide-react-native';
+import { Calendar, TrendingUp, Award, ArrowUpRight, ArrowDownRight, Sparkles } from 'lucide-react-native';
 import { ProgressChart } from '@/components/ProgressChart';
 import { useAppStore } from '@/lib/store';
-import { PROGRESS_DATA } from '@/lib/demo-data';
 import { colors, getGradeColor } from '@/lib/theme';
+import type { ProgressEntry } from '@/lib/types';
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
@@ -18,9 +18,32 @@ export default function ProgressScreen() {
     [assessments]
   );
 
-  const latestScore = PROGRESS_DATA[PROGRESS_DATA.length - 1]?.score ?? 0;
-  const firstScore = PROGRESS_DATA[0]?.score ?? 0;
+  const progressData: ProgressEntry[] = useMemo(() =>
+    sortedAssessments.map(a => ({
+      date: new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      score: a.overallScore,
+    })).reverse(),
+    [sortedAssessments]
+  );
+
+  const latestScore = sortedAssessments[0]?.overallScore ?? 0;
+  const firstScore = sortedAssessments[sortedAssessments.length - 1]?.overallScore ?? 0;
   const totalGain = latestScore - firstScore;
+
+  // Empty state when no scans
+  if (assessments.length === 0) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 }}>
+        <Sparkles size={64} color={colors.primary} style={{ marginBottom: 20 }} />
+        <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 24, color: '#f1f1f4', textAlign: 'center', marginBottom: 10 }}>
+          No Progress Yet
+        </Text>
+        <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 15, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+          Take your first scan to start tracking your journey
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -67,7 +90,7 @@ export default function ProgressScreen() {
       <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
         <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 16, paddingTop: 12 }}>
           <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: '#f1f1f4', marginBottom: 12 }}>Score Over Time</Text>
-          <ProgressChart data={PROGRESS_DATA} width={screenWidth - 72} height={160} />
+          <ProgressChart data={progressData} width={screenWidth - 72} height={160} />
         </View>
       </View>
 

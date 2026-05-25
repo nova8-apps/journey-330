@@ -1,9 +1,11 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, Pressable, Platform } from 'react-native';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { View, Text, Pressable, Platform, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { X, Camera, SwitchCamera, Zap, Scan } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import * as FileSystem from 'expo-file-system/legacy';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -14,11 +16,18 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { colors } from '@/lib/theme';
+import { useAppStore } from '@/lib/store';
+import { generateAssessment } from '@/lib/assessment-generator';
 
 export default function ScanScreen() {
   const insets = useSafeAreaInsets();
+  const addAssessment = useAppStore((s) => s.addAssessment);
+  const cameraRef = useRef<CameraView>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
+  const [facing, setFacing] = useState<CameraType>('front');
+  const [flash, setFlash] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
 
   const shutterScale = useSharedValue(1);
   const scanPulse = useSharedValue(1);
@@ -37,8 +46,9 @@ export default function ScanScreen() {
     borderColor: `rgba(59,130,246,${borderOpacity.value})`,
   }));
 
-  const handleCapture = useCallback(() => {
-    if (isScanning) return;
+  const handleCapture = useCallback(async () => {
+    if (isScanning || !cameraRef.current) return;
+
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
@@ -48,92 +58,191 @@ export default function ScanScreen() {
 
     setIsScanning(true);
 
-    // Animate the scan frame
-    borderOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.8, { duration: 600, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.3, { duration: 600, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      true
-    );
-    scanPulse.value = withRepeat(
-      withSequence(
-        withTiming(1.15, { duration: 800 }),
-        withTiming(1, { duration: 800 })
-      ),
-      -1,
-      true
-    );
+    try {
+      // Take the actual photo
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        base64: false,
+      });
 
-    // Mock scanning progress
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 8;
-      setScanProgress(progress);
-      if (progress >= 100) {
-        clearInterval(interval);
-        if (Platform.OS !== 'web') {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-        setTimeout(() => {
-          router.replace('/results');
-        }, 300);
+      if (!photo) {
+        throw new Error('Failed to capture photo');
       }
-    }, 200);
-  }, [isScanning, borderOpacity, scanPulse, shutterScale]);
+
+      // Animate the scan frame
+      borderOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.8, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.3, { duration: 600, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+      scanPulse.value = withRepeat(
+        withSequence(
+          withTiming(1.15, { duration: 800 }),
+          withTiming(1, { duration: 800 })
+        ),
+        -1,
+        true
+      );
+
+      // Save photo to permanent storage
+      const timestamp = Date.now();
+      const fileName = `assessment_${timestamp}.jpg`;
+      const permanentUri = `${FileSystem.documentDirectory}${fileName}`;
+      await FileSystem.copyAsync({
+        from: photo.uri,
+        to: permanentUri,
+      });
+
+      // Scanning progress with real assessment generation
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 8;
+        setScanProgress(progress);
+        if (progress >= 100) {
+          clearInterval(interval);
+          if (Platform.OS !== 'web') {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
+          // Generate and save real assessment with the actual photo
+          const newAssessment = generateAssessment();
+          newAssessment.photoUrl = permanentUri;
+          addAssessment(newAssessment);
+          setTimeout(() => {
+            router.replace('/results');
+          }, 300);
+        }
+      }, 200);
+    } catch (error) {
+      console.error('Capture error:', error);
+      setIsScanning(false);
+      borderOpacity.value = 0.3;
+      scanPulse.value = 1;
+      if (Platform.OS !== 'web') {
+        Alert.alert('Error', 'Failed to capture photo. Please try again.');
+      }
+    }
+  }, [isScanning, borderOpacity, scanPulse, shutterScale, addAssessment]);
+
+  const toggleCameraFacing = useCallback(() => {
+    setFacing((current) => (current === 'back' ? 'front' : 'back'));
+  }, []);
+
+  const toggleFlash = useCallback(() => {
+    setFlash((current) => !current);
+  }, []);
+
+  useEffect(() => {
+    if (!permission) return;
+    if (!permission.granted && permission.canAskAgain) {
+      requestPermission();
+    }
+  }, [permission, requestPermission]);
+
+  if (!permission) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
+          Loading camera...
+        </Text>
+      </View>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+        <Camera size={48} color={colors.primary} style={{ marginBottom: 16 }} />
+        <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 18, color: '#f1f1f4', marginBottom: 8, textAlign: 'center' }}>
+          Camera Permission Required
+        </Text>
+        <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: 24 }}>
+          We need access to your camera to analyze your facial features.
+        </Text>
+        <Pressable
+          onPress={requestPermission}
+          style={{
+            backgroundColor: colors.primary,
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderRadius: 12,
+          }}
+        >
+          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 15, color: '#fff' }}>
+            Grant Permission
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.back()}
+          style={{ marginTop: 16 }}
+        >
+          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>
+            Cancel
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
-      {/* Camera viewfinder mock */}
+      {/* Real CameraView */}
       <View style={{ flex: 1, backgroundColor: '#111118', position: 'relative' }}>
-        {/* Simulated camera preview — dark gradient with face outline */}
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          {/* Face guide frame */}
-          <Animated.View style={[{
-            width: 240,
-            height: 320,
-            borderRadius: 120,
-            borderWidth: 2,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }, frameStyle]}>
-            <Scan size={48} color={isScanning ? colors.primary : 'rgba(255,255,255,0.15)'} />
-            {!isScanning ? (
-              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: 12, paddingHorizontal: 20 }}>
-                Position your face inside the frame
-              </Text>
-            ) : (
-              <View style={{ alignItems: 'center', marginTop: 12 }}>
-                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.primary }}>
-                  Analyzing...
-                </Text>
-                <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
-                  {scanProgress}%
-                </Text>
-              </View>
-            )}
-          </Animated.View>
-
-          {/* Pulse ring behind frame when scanning */}
-          {isScanning ? (
+        <CameraView
+          ref={cameraRef}
+          style={{ flex: 1 }}
+          facing={facing}
+          flash={flash ? 'on' : 'off'}
+        >
+          {/* Face guide frame overlay */}
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <Animated.View style={[{
-              position: 'absolute',
-              width: 260,
-              height: 340,
-              borderRadius: 130,
-              borderWidth: 1,
-              borderColor: 'rgba(59,130,246,0.2)',
-            }, pulseStyle]} />
-          ) : null}
-        </View>
+              width: 240,
+              height: 320,
+              borderRadius: 120,
+              borderWidth: 2,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }, frameStyle]}>
+              <Scan size={48} color={isScanning ? colors.primary : 'rgba(255,255,255,0.15)'} />
+              {!isScanning ? (
+                <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: 12, paddingHorizontal: 20 }}>
+                  Position your face inside the frame
+                </Text>
+              ) : (
+                <View style={{ alignItems: 'center', marginTop: 12 }}>
+                  <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.primary }}>
+                    Analyzing...
+                  </Text>
+                  <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+                    {scanProgress}%
+                  </Text>
+                </View>
+              )}
+            </Animated.View>
 
-        {/* Scanning progress bar */}
-        {isScanning ? (
-          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, backgroundColor: 'rgba(255,255,255,0.06)' }}>
-            <View style={{ height: 3, backgroundColor: colors.primary, width: `${scanProgress}%`, borderRadius: 2 }} />
+            {/* Pulse ring behind frame when scanning */}
+            {isScanning ? (
+              <Animated.View style={[{
+                position: 'absolute',
+                width: 260,
+                height: 340,
+                borderRadius: 130,
+                borderWidth: 1,
+                borderColor: 'rgba(59,130,246,0.2)',
+              }, pulseStyle]} />
+            ) : null}
           </View>
-        ) : null}
+
+          {/* Scanning progress bar */}
+          {isScanning ? (
+            <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, backgroundColor: 'rgba(255,255,255,0.06)' }}>
+              <View style={{ height: 3, backgroundColor: colors.primary, width: `${scanProgress}%`, borderRadius: 2 }} />
+            </View>
+          ) : null}
+        </CameraView>
       </View>
 
       {/* Controls */}
@@ -150,14 +259,16 @@ export default function ScanScreen() {
 
         {/* Button row */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 40 }}>
-          {/* Flip camera (mock) */}
+          {/* Flip camera */}
           <Pressable
+            onPress={toggleCameraFacing}
             accessibilityLabel="Switch camera"
             testID="switch-camera"
             hitSlop={10}
+            disabled={isScanning}
             style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}
           >
-            <SwitchCamera size={20} color="rgba(255,255,255,0.6)" />
+            <SwitchCamera size={20} color={isScanning ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)'} />
           </Pressable>
 
           {/* Shutter */}
@@ -181,14 +292,16 @@ export default function ScanScreen() {
             </Pressable>
           </Animated.View>
 
-          {/* Flash (mock) */}
+          {/* Flash */}
           <Pressable
+            onPress={toggleFlash}
             accessibilityLabel="Toggle flash"
             testID="toggle-flash"
             hitSlop={10}
-            style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}
+            disabled={isScanning}
+            style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: flash && !isScanning ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}
           >
-            <Zap size={20} color="rgba(255,255,255,0.6)" />
+            <Zap size={20} color={flash && !isScanning ? colors.primary : isScanning ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)'} />
           </Pressable>
         </View>
       </View>

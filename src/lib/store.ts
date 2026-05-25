@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Assessment } from './types';
-import { DEMO_ASSESSMENT, PAST_ASSESSMENTS } from './demo-data';
 
 interface AppState {
   assessments: Assessment[];
@@ -20,8 +19,8 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      assessments: PAST_ASSESSMENTS,
-      currentAssessment: DEMO_ASSESSMENT,
+      assessments: [],
+      currentAssessment: null,
       notificationsEnabled: true,
       reminderTime: '9:00 AM',
       units: 'metric',

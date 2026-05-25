@@ -2,11 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { Target, CheckCircle2, Circle } from 'lucide-react-native';
+import { Target, CheckCircle2, Circle, Sparkles } from 'lucide-react-native';
 import { TipCard } from '@/components/TipCard';
 import { useAppStore } from '@/lib/store';
-import { IMPROVEMENT_TIPS } from '@/lib/demo-data';
 import { colors } from '@/lib/theme';
+import type { ImprovementTip } from '@/lib/types';
 
 type FilterCategory = 'all' | 'skincare' | 'exercise' | 'lifestyle' | 'grooming' | 'nutrition';
 
@@ -30,13 +30,25 @@ export default function PlanScreen() {
     return [...currentAssessment.features].sort((a, b) => a.score - b.score).slice(0, 3);
   }, [currentAssessment]);
 
+  const allTips = useMemo((): ImprovementTip[] => {
+    if (!currentAssessment) return [];
+    return weakestFeatures.flatMap((feature, idx) =>
+      feature.tips.map((tipText, tipIdx) => ({
+        id: `${feature.id}-tip-${tipIdx}`,
+        featureId: feature.id,
+        title: tipText.split('—')[0].trim(),
+        description: tipText.includes('—') ? tipText.split('—')[1].trim() : tipText,
+        difficulty: (idx === 0 ? 'easy' : idx === 1 ? 'medium' : 'hard') as 'easy' | 'medium' | 'hard',
+        timeframe: idx === 0 ? '1-2 weeks' : idx === 1 ? '3-6 weeks' : '2-3 months',
+        category: feature.category === 'skin' ? 'skincare' : feature.category === 'structure' ? 'exercise' : 'lifestyle',
+      }))
+    );
+  }, [currentAssessment, weakestFeatures]);
+
   const filteredTips = useMemo(() => {
-    let tips = IMPROVEMENT_TIPS;
-    if (activeFilter !== 'all') {
-      tips = tips.filter((t) => t.category === activeFilter);
-    }
-    return tips;
-  }, [activeFilter]);
+    if (activeFilter === 'all') return allTips;
+    return allTips.filter((t) => t.category === activeFilter);
+  }, [allTips, activeFilter]);
 
   const toggleTip = (tipId: string) => {
     if (Platform.OS !== 'web') {
@@ -54,8 +66,23 @@ export default function PlanScreen() {
   };
 
   const completedCount = completedTips.size;
-  const totalCount = IMPROVEMENT_TIPS.length;
+  const totalCount = allTips.length;
   const progressPct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+  // Empty state when no scans
+  if (!currentAssessment) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 }}>
+        <Sparkles size={64} color={colors.primary} style={{ marginBottom: 20 }} />
+        <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 24, color: '#f1f1f4', textAlign: 'center', marginBottom: 10 }}>
+          No Plan Yet
+        </Text>
+        <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 15, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+          Take a scan to get a personalized improvement plan
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView

@@ -17,7 +17,7 @@ export interface Assessment {
   overallGrade: Grade;
   overallScore: number;
   features: FeatureGrade[];
-  imageUri?: string;
+  photoUrl?: string;
 }
 
 export interface ImprovementTip {

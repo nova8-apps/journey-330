@@ -2,18 +2,33 @@ import React from 'react';
 import { View, Text, Pressable, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Camera, ChevronRight, Zap, Flame, ArrowUpRight } from 'lucide-react-native';
+import { Camera, ChevronRight, Zap, Flame, ArrowUpRight, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { GradeRing } from '@/components/GradeRing';
 import { FeatureCard } from '@/components/FeatureCard';
 import { useAppStore } from '@/lib/store';
-import { DEMO_USER, PROGRESS_DATA } from '@/lib/demo-data';
 import { colors, getGradeColor } from '@/lib/theme';
+import type { Assessment } from '@/lib/types';
+
+function calculateStreak(assessments: Assessment[]): number {
+  if (assessments.length === 0) return 0;
+  const sorted = [...assessments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  let streak = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = new Date(sorted[i - 1].date);
+    const curr = new Date(sorted[i].date);
+    const dayDiff = Math.floor((prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24));
+    if (dayDiff <= 7) streak++;
+    else break;
+  }
+  return streak;
+}
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const currentAssessment = useAppStore((s) => s.currentAssessment);
+  const assessments = useAppStore((s) => s.assessments);
   const scanScale = useSharedValue(1);
 
   const scanStyle = useAnimatedStyle(() => ({
@@ -35,9 +50,46 @@ export default function HomeScreen() {
     ? [...currentAssessment.features].sort((a, b) => a.score - b.score).slice(0, 2)
     : [];
 
-  const scoreDelta = PROGRESS_DATA.length >= 2
-    ? PROGRESS_DATA[PROGRESS_DATA.length - 1].score - PROGRESS_DATA[PROGRESS_DATA.length - 2].score
+  const scoreDelta = assessments.length >= 2
+    ? assessments[assessments.length - 1].overallScore - assessments[assessments.length - 2].overallScore
     : 0;
+
+  const streakDays = assessments.length > 0 ? calculateStreak(assessments) : 0;
+  const totalScans = assessments.length;
+
+  // Empty state when no scans
+  if (assessments.length === 0) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 }}>
+        <Sparkles size={64} color={colors.primary} style={{ marginBottom: 20 }} />
+        <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 24, color: '#f1f1f4', textAlign: 'center', marginBottom: 10 }}>
+          Start Your Journey
+        </Text>
+        <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 15, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: 40 }}>
+          Take your first face scan to get a detailed assessment and personalized improvement plan
+        </Text>
+        <Animated.View style={scanStyle}>
+          <Pressable
+            onPress={handleScan}
+            accessibilityLabel="Take first scan"
+            testID="first-scan-button"
+            style={{
+              backgroundColor: colors.primary,
+              borderRadius: 16,
+              paddingVertical: 16,
+              paddingHorizontal: 32,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Camera size={20} color="#fff" />
+            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: '#fff', marginLeft: 10 }}>Take First Scan</Text>
+          </Pressable>
+        </Animated.View>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -48,10 +100,10 @@ export default function HomeScreen() {
       {/* Header — personalized greeting */}
       <View style={{ paddingTop: insets.top, paddingHorizontal: 20, marginBottom: 10 }}>
         <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 2 }}>
-          Welcome back,
+          Welcome back
         </Text>
         <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 28, color: '#f1f1f4', letterSpacing: -0.5 }}>
-          {DEMO_USER.name}
+          Journey
         </Text>
       </View>
 
@@ -122,7 +174,7 @@ export default function HomeScreen() {
             <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.5)', marginLeft: 6 }}>Streak</Text>
           </View>
           <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 28, color: '#f1f1f4', letterSpacing: -1 }}>
-            {DEMO_USER.streakDays}
+            {streakDays}
           </Text>
           <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>days</Text>
         </View>
@@ -132,7 +184,7 @@ export default function HomeScreen() {
             <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.5)', marginLeft: 6 }}>Scans</Text>
           </View>
           <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 28, color: '#f1f1f4', letterSpacing: -1 }}>
-            {DEMO_USER.assessmentCount}
+            {totalScans}
           </Text>
           <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>total</Text>
         </View>

@@ -64,7 +64,8 @@
       }
     },
     "extra": {
-      "privacyPolicyUrl": "https://nova8.dev/privacy/330"
+      "privacyPolicyUrl": "https://nova8.dev/privacy/330",
+      "apiBaseUrl": "https://3000-i2uk46jf99vu9ve40yivm.e2b.app"
     }
   }
 }
