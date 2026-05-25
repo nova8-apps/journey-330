@@ -11,7 +11,15 @@ interface ProgressChartProps {
 }
 
 export function ProgressChart({ data, width = 320, height = 160 }: ProgressChartProps) {
-  if (data.length < 2) return null;
+  if (data.length < 2) {
+    return (
+      <View style={{ width, height, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 12 }}>
+        <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
+          Take another scan to see your trend
+        </Text>
+      </View>
+    );
+  }
 
   const paddingLeft = 0;
   const paddingRight = 0;

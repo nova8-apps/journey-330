@@ -23,7 +23,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#253952"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -65,7 +65,7 @@
     },
     "extra": {
       "privacyPolicyUrl": "https://nova8.dev/privacy/330",
-      "apiBaseUrl": "https://3000-i2uk46jf99vu9ve40yivm.e2b.app"
+      "apiBaseUrl": "https://3000-i5rxokjh0k5hkvizotr8t.e2b.app"
     }
   }
 }

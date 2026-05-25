@@ -5,9 +5,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { ArrowLeft, TrendingUp, Lightbulb, CheckCircle } from 'lucide-react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { GradeRing } from '@/components/GradeRing';
-import { TipCard } from '@/components/TipCard';
 import { useAppStore } from '@/lib/store';
-import { IMPROVEMENT_TIPS, PAST_ASSESSMENTS } from '@/lib/demo-data';
 import { colors, getGradeColor } from '@/lib/theme';
 import type { FeatureGrade } from '@/lib/types';
 
@@ -15,24 +13,20 @@ export default function FeatureDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const currentAssessment = useAppStore((s) => s.currentAssessment);
+  const assessments = useAppStore((s) => s.assessments);
 
   const feature = useMemo(() =>
     currentAssessment?.features.find((f) => f.id === id) ?? null,
     [currentAssessment, id]
   );
 
-  const relatedTips = useMemo(() =>
-    IMPROVEMENT_TIPS.filter((t) => t.featureId === id),
-    [id]
-  );
-
   // Feature progress over assessments
   const progressHistory = useMemo(() =>
-    PAST_ASSESSMENTS.map((a) => {
+    assessments.map((a) => {
       const f = a.features.find((feat) => feat.id === id);
       return { date: a.date, score: f?.score ?? 0 };
     }).slice(-5),
-    [id]
+    [assessments, id]
   );
 
   if (!feature) {
@@ -138,16 +132,6 @@ export default function FeatureDetailScreen() {
             ))}
           </View>
         </View>
-
-        {/* Detailed improvement plan */}
-        {relatedTips.length > 0 ? (
-          <View style={{ paddingHorizontal: 20 }}>
-            <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 17, color: '#f1f1f4', marginBottom: 12 }}>Detailed Plan</Text>
-            {relatedTips.map((tip) => (
-              <TipCard key={tip.id} tip={tip} />
-            ))}
-          </View>
-        ) : null}
       </ScrollView>
     </View>
   );

@@ -4,8 +4,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight, Bell, Ruler, Moon, Shield, HelpCircle, Star, LogOut } from 'lucide-react-native';
 import { useAppStore } from '@/lib/store';
-import { DEMO_USER } from '@/lib/demo-data';
 import { colors } from '@/lib/theme';
+import type { Assessment } from '@/lib/types';
+
+function calculateStreak(assessments: Assessment[]): number {
+  if (assessments.length === 0) return 0;
+  const sorted = [...assessments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  let streak = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = new Date(sorted[i - 1].date);
+    const curr = new Date(sorted[i].date);
+    const dayDiff = Math.floor((prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24));
+    if (dayDiff <= 7) streak++;
+    else break;
+  }
+  return streak;
+}
 
 interface SettingRowProps {
   icon: React.ComponentType<{ size: number; color: string }>;
@@ -44,6 +58,21 @@ export default function ProfileScreen() {
   const notificationsEnabled = useAppStore((s) => s.notificationsEnabled);
   const toggleNotifications = useAppStore((s) => s.toggleNotifications);
   const units = useAppStore((s) => s.units);
+  const assessments = useAppStore((s) => s.assessments);
+  const currentAssessment = useAppStore((s) => s.currentAssessment);
+
+  const displayName = 'Journey';
+  const scanCount = assessments.length;
+  const joinDate = assessments.length > 0
+    ? new Date(assessments[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  const streakDays = calculateStreak(assessments);
+  const bestFeature = currentAssessment
+    ? [...currentAssessment.features].sort((a, b) => b.score - a.score)[0]
+    : null;
+  const focusArea = currentAssessment
+    ? [...currentAssessment.features].sort((a, b) => a.score - b.score)[0]
+    : null;
 
   const handleToggle = () => {
     if (Platform.OS !== 'web') {
@@ -67,20 +96,20 @@ export default function ProfileScreen() {
           marginBottom: 12,
         }}>
           <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 28, color: '#fff' }}>
-            {DEMO_USER.name.charAt(0)}
+            {displayName.charAt(0)}
           </Text>
         </View>
-        <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 22, color: '#f1f1f4', marginBottom: 4 }}>{DEMO_USER.name}</Text>
+        <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 22, color: '#f1f1f4', marginBottom: 4 }}>{displayName}</Text>
         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Star size={12} color={colors.primary} />
             <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-              {DEMO_USER.assessmentCount} scans
+              {scanCount > 0 ? `${scanCount} scans` : '—'}
             </Text>
           </View>
           <Text style={{ color: 'rgba(255,255,255,0.15)' }}>·</Text>
           <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-            Joined {new Date(DEMO_USER.joinedDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+            Joined {joinDate}
           </Text>
         </View>
       </View>
@@ -88,16 +117,26 @@ export default function ProfileScreen() {
       {/* Quick stats */}
       <View style={{ flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginBottom: 28 }}>
         <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 14, alignItems: 'center' }}>
-          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 24, color: colors.primary, letterSpacing: -0.5 }}>12</Text>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 24, color: colors.primary, letterSpacing: -0.5 }}>
+            {streakDays > 0 ? streakDays : '—'}
+          </Text>
           <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>Day Streak</Text>
         </View>
         <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 14, alignItems: 'center' }}>
-          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 24, color: '#22c55e', letterSpacing: -0.5 }}>A-</Text>
-          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>Best: {DEMO_USER.bestFeature}</Text>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 24, color: '#22c55e', letterSpacing: -0.5 }}>
+            {bestFeature ? bestFeature.grade : '—'}
+          </Text>
+          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+            Best: {bestFeature ? bestFeature.name : '—'}
+          </Text>
         </View>
         <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 14, alignItems: 'center' }}>
-          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 24, color: '#eab308', letterSpacing: -0.5 }}>C+</Text>
-          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>Focus: {DEMO_USER.focusArea}</Text>
+          <Text style={{ fontFamily: 'Inter_800ExtraBold', fontSize: 24, color: '#eab308', letterSpacing: -0.5 }}>
+            {focusArea ? focusArea.grade : '—'}
+          </Text>
+          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+            Focus: {focusArea ? focusArea.name : '—'}
+          </Text>
         </View>
       </View>
 

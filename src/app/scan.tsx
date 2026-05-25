@@ -17,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { colors } from '@/lib/theme';
 import { useAppStore } from '@/lib/store';
+import { analyzeWithAI } from '@/lib/ai-assessment';
 import { generateAssessment } from '@/lib/assessment-generator';
 
 export default function ScanScreen() {
@@ -96,25 +97,52 @@ export default function ScanScreen() {
         to: permanentUri,
       });
 
-      // Scanning progress with real assessment generation
+      // AI analysis with progress animation
       let progress = 0;
-      const interval = setInterval(() => {
-        progress += 8;
-        setScanProgress(progress);
-        if (progress >= 100) {
-          clearInterval(interval);
-          if (Platform.OS !== 'web') {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          }
-          // Generate and save real assessment with the actual photo
-          const newAssessment = generateAssessment();
-          newAssessment.photoUrl = permanentUri;
-          addAssessment(newAssessment);
-          setTimeout(() => {
-            router.replace('/results');
-          }, 300);
+      const progressInterval = setInterval(() => {
+        progress += 5;
+        if (progress >= 95) {
+          clearInterval(progressInterval);
+          setScanProgress(95); // Hold at 95% until AI finishes
+        } else {
+          setScanProgress(progress);
         }
-      }, 200);
+      }, 120);
+
+      try {
+        // Call OpenAI Vision for real analysis
+        const newAssessment = await analyzeWithAI(permanentUri);
+        newAssessment.photoUrl = permanentUri;
+
+        clearInterval(progressInterval);
+        setScanProgress(100);
+
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+
+        addAssessment(newAssessment);
+        setTimeout(() => {
+          router.replace('/results');
+        }, 300);
+      } catch (aiError) {
+        console.error('AI analysis failed, falling back to mock:', aiError);
+        clearInterval(progressInterval);
+
+        // Fallback to mock assessment if AI fails
+        const newAssessment = generateAssessment();
+        newAssessment.photoUrl = permanentUri;
+        setScanProgress(100);
+
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+
+        addAssessment(newAssessment);
+        setTimeout(() => {
+          router.replace('/results');
+        }, 300);
+      }
     } catch (error) {
       console.error('Capture error:', error);
       setIsScanning(false);

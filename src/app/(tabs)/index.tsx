@@ -81,8 +81,7 @@ export default function HomeScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-            }}
-          >
+            }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Camera size={20} color="#fff" />
             <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 16, color: '#fff', marginLeft: 10 }}>Take First Scan</Text>
           </Pressable>
@@ -138,7 +137,9 @@ export default function HomeScreen() {
                   <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 11, color: '#22c55e', marginLeft: 2 }}>+{scoreDelta}pts</Text>
                 </View>
               ) : null}
-              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>May 24, 2026</Text>
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+                {new Date(currentAssessment.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </Text>
             </View>
           </View>
           <ChevronRight size={20} color="rgba(255,255,255,0.2)" />
